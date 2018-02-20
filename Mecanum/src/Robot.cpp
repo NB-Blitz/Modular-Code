@@ -1,11 +1,13 @@
 #include "WPILib.h"
 #include "ctre/Phoenix.h"
+#include "BlitzLogger.hpp"
 
 class Robot : public SampleRobot
 {
 	Joystick Stick;
 	WPI_TalonSRX Left_Front, Left_Back, Right_Front, Right_Back;
 	PowerDistributionPanel PDP;
+	FRC::BlitzLogger Blitz_Log;
 	double speeds[4], maxMagnitude;
 
 public:
@@ -15,7 +17,8 @@ public:
 		Left_Back(2),
 		Right_Front(3),
 		Right_Back(4),
-		PDP(0)
+		PDP(0),
+		Blitz_Log(4)
 
 	{
 		maxMagnitude = 0;
@@ -33,6 +36,8 @@ public:
  *----------------------------------------------------------------------------------------------*/
 	void OperatorControl()
 	{
+		Blitz_Log.init();
+		int timeSinceBegin = 0;
 		while (IsOperatorControl() && IsEnabled())
 		{
 			double joyX = Stick.GetX();
@@ -75,8 +80,8 @@ public:
 
 			Left_Front.Set(speeds[0]);
 			Left_Back.Set(speeds[1]);
-			Right_Front.Set(speeds[2]);
-			Right_Back.Set(speeds[3]);
+			Right_Front.Set(-speeds[2]);
+			Right_Back.Set(-speeds[3]);
 
 			SmartDashboard::PutNumber("Joystick X", joyX);
 			SmartDashboard::PutNumber("Joystick Y", joyY);
@@ -92,13 +97,31 @@ public:
 			SmartDashboard::PutNumber("RF PDP Current", PDP.GetCurrent(15));
 			SmartDashboard::PutNumber("RB PDP Current", PDP.GetCurrent(14));
 
-			SmartDashboard::PutNumber("LF Talon Current", PDP.GetCurrent(0));
-			SmartDashboard::PutNumber("LB Talon Current", PDP.GetCurrent(1));
-			SmartDashboard::PutNumber("RF Talon Current", PDP.GetCurrent(15));
-			SmartDashboard::PutNumber("RB Talon Current", PDP.GetCurrent(14));
+			SmartDashboard::PutNumber("LF Talon Current", Left_Front.GetOutputCurrent());
+			SmartDashboard::PutNumber("LB Talon Current", Left_Back.GetOutputCurrent());
+			SmartDashboard::PutNumber("RF Talon Current", Right_Front.GetOutputCurrent());
+			SmartDashboard::PutNumber("RB Talon Current", Right_Back.GetOutputCurrent());
+
+			timeSinceBegin += 1;
+			if ((timeSinceBegin % 600) == 0)
+			{
+				Blitz_Log.info("Tele-Op", "Left Front Encoder Velocity: " + std::to_string(Left_Front.GetSelectedSensorVelocity(0)));
+				Blitz_Log.info("Tele-Op", "Left Back Encoder Velocity: " + std::to_string(Left_Back.GetSelectedSensorVelocity(0)));
+				Blitz_Log.info("Tele-Op", "Right Front Encoder Velocity: " + std::to_string(Right_Front.GetSelectedSensorVelocity(0)));
+				Blitz_Log.info("Tele-Op", "Right Back Encoder Velocity: " + std::to_string(Right_Back.GetSelectedSensorVelocity(0)));
+				Blitz_Log.info("Tele-Op", "Left Front Current: " + std::to_string(PDP.GetCurrent(0)));
+				Blitz_Log.info("Tele-Op", "Left Back Current: " + std::to_string(PDP.GetCurrent(1)));
+				Blitz_Log.info("Tele-Op", "Right Front Current: " + std::to_string(PDP.GetCurrent(15)));
+				Blitz_Log.info("Tele-Op", "Right Back Current: " + std::to_string(PDP.GetCurrent(14)));
+				Blitz_Log.info("Tele-Op", "Left Front Given Velocity: " + std::to_string(Left_Front.GetMotorOutputVoltage()));
+				Blitz_Log.info("Tele-Op", "Left Back Given Velocity: " + std::to_string(Left_Back.GetMotorOutputVoltage()));
+				Blitz_Log.info("Tele-Op", "Right Front Given Velocity: " + std::to_string(Right_Front.GetMotorOutputVoltage()));
+				Blitz_Log.info("Tele-Op", "Right Back Given Velocity: " + std::to_string(Right_Back.GetMotorOutputVoltage()));
+			}
 
 			Wait(0.005);
 		}
+		Blitz_Log.close();
 	}
 
 /*-----------------------------------------------------------------------------------------------
